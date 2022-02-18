@@ -45,12 +45,15 @@ func postFoo(w http.ResponseWriter, r *http.Request) {
 
 func deleteFoo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	// now get the id
 	vars := mux.Vars(r)
 	key := vars["id"]
-	delete(idMap, key)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "delete called"}`))
+	_, exists := idMap[key]
+	if exists {
+		delete(idMap, key)
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
 }
 
 func main() {
