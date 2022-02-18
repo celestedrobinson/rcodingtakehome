@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -38,9 +39,21 @@ func getFoo(w http.ResponseWriter, r *http.Request) {
 
 func postFoo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	var f Foo
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// attempt to unmarshal the body
+	err = json.Unmarshal(reqBody, &f)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "post called"}`))
+	w.Write([]byte(f.Name))
 }
 
 func deleteFoo(w http.ResponseWriter, r *http.Request) {
