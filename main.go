@@ -15,6 +15,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,6 +29,14 @@ type Foo struct {
 	Id   string `json:"id"`
 }
 
+type NoNameError struct {
+	Body []byte
+}
+
+func (e *NoNameError) Error() string {
+	return fmt.Sprintf("No name found in body: %v", e.Body)
+}
+
 var fooMap = map[string]Foo{}
 
 func getFoo(w http.ResponseWriter, r *http.Request) {
@@ -36,14 +45,13 @@ func getFoo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r) // get the ID values from the variables in the address
 	key := vars["id"]
 	foo, exists := fooMap[key]
-
 	if !exists {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	b, err := json.Marshal(foo)
+	b, err := json.Marshal(foo) // convert the foo to JSON
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -52,12 +60,16 @@ func getFoo(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func makeFoo(body []byte) (foo *Foo, err error) {
+func setFoo(body []byte) (foo *Foo, err error) {
 	if err := json.Unmarshal(body, &foo); err != nil {
 		return nil, err
 	}
+	if foo.Name == "" {
+		return nil, &NoNameError{Body: body}
+	}
 	id := shortuuid.New()
 	foo.Id = id
+	fooMap[foo.Id] = *foo
 	return foo, nil
 }
 
@@ -68,14 +80,17 @@ func postFoo(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	foo, err := makeFoo(body)
+	foo, err := setFoo(body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		switch err.(type) {
+		case *NoNameError:
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		return
 	}
-
-	fooMap[foo.Id] = *foo
-
+	
 	b, err := json.Marshal(foo)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
