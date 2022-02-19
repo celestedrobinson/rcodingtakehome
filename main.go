@@ -2,14 +2,15 @@
 A simple package that creates a server for a coding exercise for a job application process
 
 
-Given more time and a more refreshed memory when it comes to Golang, I would write formal unit tests.
-I tested the code incrementally using postman with a unit test inspired approach. First I created a function outline (get, post and delete functions). I started with get,
+Given more time and a more refreshed memory when it comes to Golang, I would write formal unit tests. I would also set up some helpful logging. Another change would be adding
+a response body if the name is missing on the post request.
+I tested the code incrementally using Postman with a unit test inspired approach. First I created a function outline (get, post and delete functions). I started with get,
 the first step was returning a foo (any foo) in json form. After, I created the global map, where I hardcoded one key-value pair for testing.
 Then I added code to get the id value in the request. After I was satisfied with the functionality of the get function, I moved on to the delete. This one was straight
 forward, following the same steps as before, just adding a line to delete the record if found and changing the status code.
 For post, I needed to unmarshal the json into the foo. Then create and add the uid. After that return that in json form.
 
-After each of these listed steps, I was sure to check that the output was expected, hence
+After each of these listed steps, I was sure to check that the output was as expected, running a through requests through Postman.
 */
 package main
 
@@ -39,6 +40,7 @@ func (e *NoNameError) Error() string {
 
 var fooMap = map[string]Foo{}
 
+// For a GET request, attempts to find a foo with the id in the request
 func getFoo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -60,6 +62,7 @@ func getFoo(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// The steps to create and add a new foo
 func setFoo(body []byte) (foo *Foo, err error) {
 	if err := json.Unmarshal(body, &foo); err != nil {
 		return nil, err
@@ -73,6 +76,7 @@ func setFoo(body []byte) (foo *Foo, err error) {
 	return foo, nil
 }
 
+// On a POST request, takes steps to add a foo to fooMap using the "name" in the received JSON, returning the foo in the response
 func postFoo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	body, err := ioutil.ReadAll(r.Body)
@@ -90,7 +94,7 @@ func postFoo(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	
+
 	b, err := json.Marshal(foo)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -100,6 +104,7 @@ func postFoo(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
+// On a DELETE request removes the record with the given ID, if found
 func deleteFoo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["id"]
